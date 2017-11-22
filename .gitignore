@@ -1,0 +1,15 @@
+*.pyc
+__ pycache __
+myvenv
+db.sqlite3
+/static
+.DS_Store
+secret_keys.py
+strava.geojson
+pages/strava_api/all_attempts_points.geojson
+
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml

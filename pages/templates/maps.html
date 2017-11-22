@@ -1,0 +1,688 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block styles %}
+<style>
+    @import "https://fonts.googleapis.com/css?family=Raleway";
+
+    .current_loc, #route_points, #avgPop, #avgPop2, #avgPop3 {
+        display: none;
+    }
+
+    #AllMaps {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        margin-top: 8px;
+        margin-bottom: 8px;
+    }
+
+    .MapContainer {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        height: 30vh;
+        border: 1px solid #888888;
+        margin-bottom: 8px;
+        margin-top: 8px;
+    }
+
+    .ratingsContainer {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-around;
+        width: 100%;
+        background-color: #fafafa;
+    }
+
+    .ratingsContainer > div {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .runsMileage {
+        width: 15vw;
+        font-family: "Open Sans";
+        font-size: 1.5em;
+    }
+
+    .ratingsSubcontainer {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-around;
+        width: 70%;
+        margin-right: 40px;
+    }
+
+    .starContainer {
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        height: 60%;
+        margin-bottom: 10px;
+
+    }
+
+    .star {
+        width: 20%;
+    }
+
+    .runBtn {
+        background: #3498db;
+        background-image: -webkit-linear-gradient(top, #3498db, #2980b9);
+        background-image: -moz-linear-gradient(top, #3498db, #2980b9);
+        background-image: -ms-linear-gradient(top, #3498db, #2980b9);
+        background-image: -o-linear-gradient(top, #3498db, #2980b9);
+        background-image: linear-gradient(to bottom, #3498db, #2980b9);
+        -webkit-border-radius: 28;
+        -moz-border-radius: 28;
+        border-radius: 28px;
+        text-shadow: 1px 1px 3px #666666;
+        -webkit-box-shadow: 0px 1px 3px #666666;
+        -moz-box-shadow: 0px 1px 3px #666666;
+        box-shadow: 0px 1px 3px #666666;
+        font-family: Arial;
+        color: #ffffff;
+        font-size: 16px;
+        padding: 10px 20px 10px 20px;
+        text-decoration: none;
+        margin-bottom: 20px;
+    }
+
+    .runBtn:hover {
+        background: #3cb0fd;
+        background-image: -webkit-linear-gradient(top, #3cb0fd, #3498db);
+        background-image: -moz-linear-gradient(top, #3cb0fd, #3498db);
+        background-image: -ms-linear-gradient(top, #3cb0fd, #3498db);
+        background-image: -o-linear-gradient(top, #3cb0fd, #3498db);
+        background-image: linear-gradient(to bottom, #3cb0fd, #3498db);
+        text-decoration: none;
+    }
+
+    .full {
+        background: url('/static/pages/img/fullStar.svg');
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+
+    .half {
+        background: url('/static/pages/img/halfStar.svg');
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+
+    .none {
+        background: url('/static/pages/img/noStar.svg');
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+
+    /* Always explicitly set map height to define size of div element that contains map */
+    .map {
+        height: 100%;
+        width: 75%;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        background: #333;
+    }
+
+    h1 {
+        margin: 0;
+    }
+
+    #contactForm {
+        display: none;
+
+        border: 6px solid salmon;
+        padding: 2em;
+        width: 400px;
+        text-align: center;
+        background: #fff;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        -webkit-transform: translate(-50%, -50%);
+        z-index: 1;
+
+    }
+
+    input, textarea {
+        margin: .8em auto;
+        font-family: inherit;
+        text-transform: inherit;
+        font-size: inherit;
+
+        display: block;
+        width: 280px;
+        padding: .4em;
+    }
+
+    textarea {
+        height: 80px;
+        resize: none;
+    }
+
+    .formBtn {
+        width: 140px;
+        display: inline-block;
+
+        background: teal;
+        color: #fff;
+        font-weight: 100;
+        font-size: 1.2em;
+        border: none;
+        height: 40px;
+    }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<span id="current_long" class="current_loc">{{ curr_lng }}</span>
+<span id="current_lat" class="current_loc">{{ curr_lat }}</span>
+<span id="mileage_goal" class="current_loc">{{ mileage }}</span>
+<span id="route_points">{{ route_points }}</span>
+<div id="AllMaps">
+    <div id="contactForm">
+
+        <h1>Send To Your Phone</h1>
+        <small>It will open in the Google Maps app</small>
+
+        <form action="{% url 'phone' %}" method="post">
+            {% csrf_token %}
+            <input type="hidden" id="start" name="start" value="">
+            <input type="hidden" id="waypoints" name="waypoints" value="">
+            <input placeholder="Phone Number" type="text" name="phone" required/>
+            <input class="formBtn" type="submit"/>
+        </form>
+    </div>
+    <div class="MapContainer">
+        <div id="map1" class="map"></div>
+        <div id="map1ratings" class="ratingsContainer">
+            <div class="runsMileage">
+                <div id="run1_mileage"></div>
+                <span id="avgPop"></span>
+            </div>
+            <div class="ratingsSubcontainer">
+                <div class="starContainer">
+                    <div class="star"></div>
+                    <div class="star"></div>
+                    <div class="star"></div>
+                    <div class="star"></div>
+                    <div class="star"></div>
+                </div>
+                <div class="btnContainer">
+                    <button id="exportRun1" class="runBtn">Export Run</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="MapContainer">
+        <div id="map2" class="map"></div>
+        <div id="map2ratings" class="ratingsContainer">
+            <div class="runsMileage">
+                <div id="run2_mileage"></div>
+                <span id="avgPop2"></span>
+            </div>
+            <div class="ratingsSubcontainer">
+                <div class="starContainer">
+                    <div class="star"></div>
+                    <div class="star"></div>
+                    <div class="star"></div>
+                    <div class="star"></div>
+                    <div class="star"></div>
+                </div>
+                <div class="btnContainer">
+                    <button id="exportRun2" class="runBtn">Export Run</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="MapContainer">
+        <div id="map3" class="map"></div>
+        <div id="map3ratings" class="ratingsContainer">
+            <div class="runsMileage">
+                <div id="run3_mileage"></div>
+                <span id="avgPop3"></span>
+            </div>
+            <div class="ratingsSubcontainer">
+                <div class="starContainer">
+                    <div class="star"></div>
+                    <div class="star"></div>
+                    <div class="star"></div>
+                    <div class="star"></div>
+                    <div class="star"></div>
+                </div>
+                <div class="btnContainer">
+                    <button id="exportRun3" class="runBtn">Export Run</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+    var waypoints1;
+    var waypoints2;
+    var waypoints3;
+
+    var maps = {
+        'map1': null,
+        'map2': null,
+        'map3': null
+    };
+
+    var infoWindows = {
+        'map1': null,
+        'map2': null,
+        'map3': null
+    };
+
+    var startMarkers = {
+        'map1': null,
+        'map2': null,
+        'map3': null
+    };
+
+    var directionsDisplay1;
+    var directionsDisplay2;
+    var directionsDisplay3;
+    var directionsService1;
+    var directionsService2;
+    var directionsService3;
+    var stepDisplay;
+    var markerArray = [];
+    var runMileage = {
+        "run1_mileage": 0,
+        "run2_mileage": 0,
+        "run3_mileage": 0
+    };
+    // Grab mileage passed in by user
+    var mileage_goal = parseFloat(document.getElementById('mileage_goal').innerHTML);
+
+    // Grab starting location
+    const start = {
+        'lng': parseFloat((document.getElementById('current_long').innerHTML)),
+        'lat': parseFloat((document.getElementById('current_lat').innerHTML))
+    };
+
+    $('#start').val(JSON.stringify(start));
+
+
+    function initMap() {
+
+
+        // Instantiate a directions service.
+        directionsService1 = new google.maps.DirectionsService();
+        directionsService2 = new google.maps.DirectionsService();
+        directionsService3 = new google.maps.DirectionsService();
+
+        // Get all map divs
+        for (var map_key in maps) {
+
+            maps[map_key] = new google.maps.Map(document.getElementById(map_key), {
+                center: start,
+                zoom: 14
+            });
+
+            infoWindows[map_key] = new google.maps.InfoWindow;
+
+            startMarkers[map_key] = new google.maps.Marker({
+                position: start,
+                map: maps[map_key],
+                visible: true
+            });
+
+            maps[map_key].setCenter(start);
+
+            startMarkers[map_key].setMap(maps[map_key]);
+            infoWindows[map_key].setPosition(start);
+        }
+
+        // Create a renderer for routes and bind it to the map.
+        var rendererOptions1 = {
+            map: maps['map1'],
+            suppressMarkers: true
+        };
+
+        var rendererOptions2 = {
+            map: maps['map2'],
+            suppressMarkers: true
+        };
+
+        var rendererOptions3 = {
+            map: maps['map3'],
+            suppressMarkers: true
+        };
+
+        directionsDisplay1 = new google.maps.DirectionsRenderer(rendererOptions1);
+        directionsDisplay2 = new google.maps.DirectionsRenderer(rendererOptions2);
+        directionsDisplay3 = new google.maps.DirectionsRenderer(rendererOptions3);
+
+        // Instantiate an info window to hold step text.
+        stepDisplay = new google.maps.InfoWindow();
+    }
+
+    function calcRoute(directionsServiceX, directionsDisplayX, html_id_str, waypointsX, callback) {
+
+        // First, clear out any existing markerArray
+        // from previous calculations.
+        for (let i = 0; i < markerArray.length; i++) {
+            markerArray[i].setMap(null);
+        }
+
+//         Retrieve the start and end locations and create
+//         a DirectionsRequest using WALKING directions.
+        var request = {
+            origin: start,
+            destination: start,
+            travelMode: 'WALKING',
+            waypoints: waypointsX
+        };
+
+        // Route the directions and pass the response to a
+        // function to create markers for each step.
+        directionsServiceX.route(request, function (response, status) {
+            if (status == "OK") {
+                //var warnings = document.getElementById("warnings_panel");
+                //warnings.innerHTML = "" + response.routes[0].warnings + "";
+                computeTotalDistance(html_id_str, response);
+                directionsDisplayX.setDirections(response);
+                //showSteps(response);
+                callback(runMileage[html_id_str], waypointsX)
+            }
+        });
+    }
+
+    // If directions response too long, shorten waypoints array
+    function shortenRoute(html_id_str, waypointsX) {
+        if (runMileage[html_id_str] > mileage_goal) {
+            waypointsX.pop();
+            waypointsX.pop();
+        }
+    }
+
+    // Get total distance of run
+    function computeTotalDistance(html_id_str, result) {
+        runMileage[html_id_str] = 0;
+        var myroute = result.routes[0];
+        for (var i = 0; i < myroute.legs.length; i++) {
+            runMileage[html_id_str] += myroute.legs[i].distance.value;
+        }
+        runMileage[html_id_str] = runMileage[html_id_str] / 1609.34;
+        document.getElementById(html_id_str).innerHTML = runMileage[html_id_str].toFixed(1) + ' mi';
+    }
+
+    // Display popularity of route
+    function starBuilder(popID, mapratingsID) {
+        if (parseFloat(document.getElementById(popID).innerHTML) > 0.5) {
+            $(mapratingsID).find('.star').addClass('full');
+        } else if (parseFloat(document.getElementById(popID).innerHTML) > 0.1) {
+            $(mapratingsID).find('.star').addClass('full');
+            $(mapratingsID).find('.star:eq(4)').removeClass('full');
+            $(mapratingsID).find('.star:eq(4)').addClass('half');
+        } else if (parseFloat(document.getElementById(popID).innerHTML) > 0.01) {
+            $(mapratingsID).find('.star').addClass('full');
+            $(mapratingsID).find('.star:eq(4)').removeClass('full');
+            $(mapratingsID).find('.star:eq(4)').addClass('none');
+        } else if (parseFloat(document.getElementById(popID).innerHTML) > 0.001) {
+            $(mapratingsID).find('.star:lt(3)').addClass('full');
+            $(mapratingsID).find('.star:eq(3)').addClass('half');
+            $(mapratingsID).find('.star:gt(3)').addClass('none');
+        } else if (parseFloat(document.getElementById(popID).innerHTML) > 0.0001) {
+            $(mapratingsID).find('.star:lt(3)').addClass('full');
+            $(mapratingsID).find('.star:gt(2)').addClass('none');
+        } else {
+            $(mapratingsID).find('.star:lt(2)').addClass('full');
+            $(mapratingsID).find('.star:gt(1)').addClass('none');
+        }
+    }
+
+    // Break all points into subgroups
+    function splitPoints(parsed, callback) {
+        // Create array of just seg_ids sorted descending by score
+        let popularity_all = [];
+        let just_pop = [];
+        let run1Points = [];
+        let run2Points = [];
+        let run3Points = [];
+
+        for (let run of parsed['features']) {
+            popularity_all.push([run['properties']['seg_id'], run['properties']['weighted_popularity']])
+        }
+
+        popularity_all.sort(function (a, b) {
+            return a[1] - b[1];
+        }).reverse();
+
+        for (let single_pop of popularity_all) {
+            just_pop.push(single_pop[1])
+        }
+
+        var maxPop = just_pop.reduce(function (a, b) {
+            return Math.max(a, b);
+        });
+
+        if (maxPop === 0) {
+            maxPop = 1
+        }
+
+        // Split array of seg_ids into three different arrays of LatLng objects
+        let counter = 0;
+        let pop_sum = 0;
+        let pop_ct = 0;
+        for (let i = 0; i < popularity_all.length; i++) {
+            // Limit each array to ~12 points
+            if (counter < 12) {
+                for (let new_run1 of parsed['features']) {
+                    if (new_run1['properties']['seg_id'] === popularity_all[i][0]) {
+                        pop_ct++;
+                        pop_sum += new_run1['properties']['weighted_popularity'];
+                        run1Points.push({
+                            'location': {
+                                'lat': new_run1['geometry']['coordinates'][0][1],
+                                'lng': new_run1['geometry']['coordinates'][0][0]
+                            },
+                            'stopover': true
+                        });
+                        counter++;
+                        break;
+                    }
+                }
+            }
+
+            if (counter === 12) {
+                document.getElementById('avgPop').innerHTML = '<p id="popVal1">' + (pop_sum / pop_ct) / maxPop + '</p>';
+                pop_sum = 0;
+                pop_ct = 0;
+            }
+
+            if (counter > 11 && counter < 24) {
+                for (let new_run2 of parsed['features']) {
+                    if (new_run2['properties']['seg_id'] === popularity_all[i][0]) {
+                        pop_ct++;
+                        pop_sum += new_run2['properties']['weighted_popularity'];
+                        run2Points.push({
+                            'location': {
+                                'lat': new_run2['geometry']['coordinates'][0][1],
+                                'lng': new_run2['geometry']['coordinates'][0][0]
+                            },
+                            'stopover': true
+                        });
+                        counter++;
+                        break;
+                    }
+                }
+            }
+
+            if (counter === 24) {
+                document.getElementById('avgPop2').innerHTML = '<p id="popVal2">' + (pop_sum / pop_ct) / maxPop + '</p>';
+                pop_sum = 0;
+                pop_ct = 0;
+            }
+
+            if (counter > 23 && counter < 36) {
+                for (let new_run3 of parsed['features']) {
+                    if (new_run3['properties']['seg_id'] === popularity_all[i][0]) {
+                        pop_ct++;
+                        pop_sum += new_run3['properties']['weighted_popularity'];
+                        run3Points.push({
+                            'location': {
+                                'lat': new_run3['geometry']['coordinates'][0][1],
+                                'lng': new_run3['geometry']['coordinates'][0][0]
+                            },
+                            'stopover': true
+                        });
+                        counter++;
+                        break;
+                    }
+                }
+            }
+
+            if (counter === 36) {
+                document.getElementById('avgPop3').innerHTML = '<p id="popVal3">' + (pop_sum / pop_ct) / maxPop + '</p>';
+            }
+        }
+        waypoints1 = run1Points;
+        //console.log("WAYPOINTS  --  " + waypoints1);
+        waypoints2 = run2Points;
+        waypoints3 = run3Points;
+        setTimeout(function () {
+            callback()
+        }, 5000)
+    }
+
+    // Convert the string from the template to JSON
+    function parsePoints(callback) {
+        let geoString = document.getElementById('route_points').innerHTML;
+        geoString = JSON.parse(geoString);
+        callback(geoString)
+    }
+
+    parsePoints(function (response) {
+        splitPoints(response, function () {
+            starBuilder('popVal1', '#map1ratings');
+            starBuilder('popVal2', '#map2ratings');
+            starBuilder('popVal3', '#map3ratings');
+
+        })
+    });
+
+    // Handle the directions API call over and over for each run, until length is close to target
+    setTimeout(function () {
+        calcRoute(directionsService1, directionsDisplay1, "run1_mileage", waypoints1, function () {
+            if (runMileage['run1_mileage'] > mileage_goal) {
+                shortenRoute('run1_mileage', waypoints1);
+                calcRoute(directionsService1, directionsDisplay1, "run1_mileage", waypoints1, function () {
+                    if (runMileage['run1_mileage'] > mileage_goal) {
+                        shortenRoute('run1_mileage', waypoints1);
+                        calcRoute(directionsService1, directionsDisplay1, "run1_mileage", waypoints1, function () {
+                            if (runMileage['run1_mileage'] > mileage_goal) {
+                                shortenRoute('run1_mileage', waypoints1);
+                                calcRoute(directionsService1, directionsDisplay1, "run1_mileage", waypoints1, function () {
+                                    if (runMileage['run1_mileage'] > mileage_goal) {
+                                        shortenRoute('run1_mileage', waypoints1);
+                                        calcRoute(directionsService1, directionsDisplay1, "run1_mileage", waypoints1, shortenRoute);
+                                    }
+                                })
+                            }
+                        })
+                    }
+                })
+            }
+        })
+    }, 4000);
+
+    setTimeout(function () {
+        calcRoute(directionsService2, directionsDisplay2, "run2_mileage", waypoints2, function () {
+            if (runMileage['run2_mileage'] > mileage_goal) {
+                shortenRoute('run2_mileage', waypoints2);
+                calcRoute(directionsService2, directionsDisplay2, "run2_mileage", waypoints2, function () {
+                    if (runMileage['run2_mileage'] > mileage_goal) {
+                        shortenRoute('run2_mileage', waypoints2);
+                        calcRoute(directionsService2, directionsDisplay2, "run2_mileage", waypoints2, function () {
+                            if (runMileage['run2_mileage'] > mileage_goal) {
+                                shortenRoute('run2_mileage', waypoints2);
+                                calcRoute(directionsService2, directionsDisplay2, "run2_mileage", waypoints2, function () {
+                                    if (runMileage['run2_mileage'] > mileage_goal) {
+                                        shortenRoute('run2_mileage', waypoints2);
+                                        calcRoute(directionsService2, directionsDisplay2, "run2_mileage", waypoints2, shortenRoute);
+                                    }
+                                })
+                            }
+                        })
+                    }
+                })
+            }
+        })
+    }, 4000);
+
+    setTimeout(function () {
+        calcRoute(directionsService3, directionsDisplay3, "run3_mileage", waypoints3, function () {
+            if (runMileage['run3_mileage'] > mileage_goal) {
+                shortenRoute('run3_mileage', waypoints3);
+                calcRoute(directionsService3, directionsDisplay3, "run3_mileage", waypoints3, function () {
+                    if (runMileage['run3_mileage'] > mileage_goal) {
+                        shortenRoute('run3_mileage', waypoints3);
+                        calcRoute(directionsService3, directionsDisplay3, "run3_mileage", waypoints3, function () {
+                            if (runMileage['run3_mileage'] > mileage_goal) {
+                                shortenRoute('run3_mileage', waypoints3);
+                                calcRoute(directionsService3, directionsDisplay3, "run3_mileage", waypoints3, function () {
+                                    if (runMileage['run3_mileage'] > mileage_goal) {
+                                        shortenRoute('run3_mileage', waypoints3);
+                                        calcRoute(directionsService3, directionsDisplay3, "run3_mileage", waypoints3, shortenRoute);
+                                    }
+                                })
+                            }
+                        })
+                    }
+                })
+            }
+        })
+    }, 4000);
+
+    $(function () {
+
+        // Send to Phone pop-up form
+        $('.runBtn').click(function () {
+            $('#contactForm').fadeToggle();
+            if ($(this).attr('id').slice(-1) == 1) {
+                $('#waypoints').val(JSON.stringify(waypoints1));
+            } else if ($(this).attr('id').slice(-1) == 2) {
+                $('#waypoints').val(JSON.stringify(waypoints2));
+            } else {
+                $('#waypoints').val(JSON.stringify(waypoints3))
+            }
+        });
+        $(document).mouseup(function (e) {
+            var container = $("#contactForm");
+
+            if (!container.is(e.target) // if the target of the click isn't the container...
+                && container.has(e.target).length === 0) // ... nor a descendant of the container
+            {
+                container.fadeOut();
+            }
+        });
+
+    });
+
+</script>
+<script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBzGC2yWQxxDUH6a293oIdHarvtDkg8nvU&callback=initMap">
+</script>
+{% endblock %}

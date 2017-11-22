@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block styles %}
+    <style>
+
+        @import url('https://fonts.googleapis.com/css?family=Open+Sans');
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Always explicitly set map height to define size of div element that contains map */
+        #map {
+            height: 100%;
+            flex-grow: 1;
+        }
+
+        #mapDashContainer {
+            display: flex;
+            flex-direction: row;
+            height: 70vh;
+            width: 100%;
+        }
+
+        #mapContainer {
+            flex-grow: 1;
+            position: relative;
+        }
+
+        #floating-panel {
+            position: absolute;
+            top: 10px;
+            left: 45%;
+            z-index: 5;
+            background-color: #fff;
+            padding: 5px;
+            border: 1px solid #999;
+            text-align: center;
+            font-family: 'Roboto', 'sans-serif';
+            line-height: 30px;
+        }
+
+        #dash {
+            display: flex;
+            flex-direction: column;
+            width: 25vw;
+            justify-content: space-around;
+            align-items: center;
+            background-color: #eeeeee;
+        }
+
+        #dash > div {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #banner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 30vh;
+            background: url('/static/pages/img/running.jpg');
+            background-size: cover;
+            background-position: 25%;
+        }
+
+        #current {
+            display: none;
+        }
+
+        #MileageForm {
+            text-align: center;
+            height: 30vh;
+            font-size: 1.5em;
+            font-family: "Open Sans";
+
+        }
+
+        label {
+            border-bottom: 1px dashed #333333;
+            /*transform: translateY(-80px);*/
+        }
+
+        button {
+            font-size: 16px;
+            font-family: "Open Sans";
+            border-radius: 5px;
+        }
+
+        h1 {
+            padding-left: 10px;
+            padding-right: 10px;
+            font-family: "Open Sans";
+            font-size: 3em;
+            background-color: rgba(230, 230, 230, 0.7);
+            border-radius: 5px;
+        }
+
+        h4 {
+            width: 66%;
+            font-family: "Open Sans";
+            text-align: justify;
+        }
+
+    </style>
+{% endblock %}
+{% block content %}
+<div id="banner">
+    <h1>WELCOME TO RUNAROUND</h1>
+</div>
+
+<div id="mapDashContainer">
+    <div id="dash">
+        <div>
+            <h4>
+                The red pin is your current location. Move it to start your run somewhere else.
+            </h4>
+        </div>
+        <form id="MileageForm" action="{% url 'map' %}" method="post">
+            {% csrf_token %}
+            <div id="current">
+                <input type="hidden" id="currentLat" name="lat">
+                <input type="hidden" id="currentLon" name="lon">
+            </div>
+            <label>Run Distance:</label><br>
+            <input id="MileageValue" type="text" name="mileage"><br>
+            <button id="MileageButton">Submit</button>
+        </form>
+    </div>
+    <div id="mapContainer">
+        <div id="floating-panel">
+            <button onclick="toggleHeatmap()">Toggle Heatmap</button>
+        </div>
+        <div id="map"></div>
+    </div>
+
+</div>
+{% endblock %}
+{% block scripts %}
+
+<script>
+    var map, heat_layer, mileage, infoWindow, pos, startMarker;
+
+    // Create Map
+    function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+            center: {lat: 45.5, lng: -122.68},
+            zoom: 12
+        });
+        infoWindow = new google.maps.InfoWindow;
+
+        // Create heatmap layer from fusion table of points
+        heat_layer = new google.maps.FusionTablesLayer({
+            query: {
+                select: 'geometry',
+                from: '17f_BPgFcj4H1iIEvmowVyP6Ge4SFRmEGiJPqabsn'
+            },
+            heatmap: {
+                enabled: true
+            }
+        });
+
+        heat_layer.setMap(map);
+
+        // Try HTML5 geolocation.
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function (position) {
+                pos = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+
+                var icon = {
+                    url: "{% static 'pages/img/red_start_pin.svg' %}", // url
+                    scaledSize: new google.maps.Size(40, 40), // scaled size
+                    origin: new google.maps.Point(0, 0), // origin
+                    anchor: new google.maps.Point(20, 45) // anchor
+                };
+
+                startMarker = new google.maps.Marker({
+                    position: pos,
+                    map: map,
+                    icon: icon,
+                    draggable: true
+                });
+
+                startMarker.setMap(map);
+                infoWindow.setPosition(pos);
+                document.getElementById('currentLat').value = pos.lat;
+                document.getElementById('currentLon').value = pos.lng;
+                //infoWindow.setContent('Your location.');
+                //infoWindow.open(map);
+                map.setCenter(pos);
+            }, function () {
+                handleLocationError(true, infoWindow, map.getCenter());
+            });
+        } else {
+            // Browser doesn't support Geolocation
+            handleLocationError(false, infoWindow, map.getCenter());
+        }
+    }
+
+    function handleLocationError(browserHasGeolocation, infoWindow, pos) {
+        infoWindow.setPosition(pos);
+        infoWindow.setContent(browserHasGeolocation ?
+            'Error: The Geolocation service failed.' :
+            'Error: Your browser doesn\'t support geolocation.');
+        infoWindow.open(map);
+    }
+
+    setTimeout(function () {
+        // Keep track of pin lat/long
+        google.maps.event.addListener(startMarker, 'dragend', function (evt) {
+            document.getElementById('currentLat').value = pos.lat;
+            document.getElementById('currentLon').value = pos.lng;
+            pos.lng = evt.latLng.lng();
+            pos.lat = evt.latLng.lat()
+        });
+    }, 7000);
+
+    // Allow user to turn heatmap layer on/off
+    function toggleHeatmap() {
+        heat_layer.setMap(heat_layer.getMap() ? null : map);
+    }
+
+    // Grab mileage input from user
+    $('#MileageButton').click(function () {
+        mileage = $('#MileageValue').val();
+        //clearPoints(getPoints);
+    })
+
+</script>
+<script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBzGC2yWQxxDUH6a293oIdHarvtDkg8nvU&callback=initMap">
+</script>
+{% endblock %}
